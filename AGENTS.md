@@ -28,10 +28,13 @@ There is no HTTP server, no user account, and no database server. Everything is 
 Target layout:
 
 - `src-tauri/`: Tauri v2 crate. Thin layer: app state, IPC commands, plugins, OAuth loopback listener.
-- `crates/9drive-core/`: domain types, errors, config, SQLite access, migrations, sync engine, upload routing.
-- `crates/9drive-storage/`: `StorageProvider` trait plus the Google Drive implementation.
+- `crates/drive-core/`: domain types, errors, config, SQLite access, migrations, sync engine, upload routing.
+- `crates/drive-storage/`: `StorageProvider` trait plus the Google Drive implementation.
 - `src/`: Svelte 5 frontend. `src/lib/ipc.ts` is the typed IPC boundary.
 - `Cargo.toml`: Cargo workspace. `package.json`: frontend tooling only.
+
+Cargo rejects package names starting with a digit, so the crates drop the plan's `9drive` prefix
+and are `drive-core` and `drive-storage`.
 
 Legacy (to be deleted at cutover):
 
@@ -59,13 +62,13 @@ Stack:
 
 Conventions:
 
-- Domain logic lives in `crates/9drive-core`; it must not depend on `tauri`.
-- All remote storage access goes through the `StorageProvider` trait in `crates/9drive-storage`.
-  Never call the Google API directly from a command or from `9drive-core`.
-- Tauri commands stay thin: validate input, call `9drive-core`, map errors to `IpcError`.
+- Domain logic lives in `crates/drive-core`; it must not depend on `tauri`.
+- All remote storage access goes through the `StorageProvider` trait in `crates/drive-storage`.
+  Never call the Google API directly from a command or from `drive-core`.
+- Tauri commands stay thin: validate input, call `drive-core`, map errors to `IpcError`.
 - SQLite is synchronous. Share one `Mutex<Connection>` in Tauri state; do not open a new
   connection per query without a reason.
-- Migrations are numbered `.sql` files in `crates/9drive-core/migrations`, applied in order
+- Migrations are numbered `.sql` files in `crates/drive-core/migrations`, applied in order
   and recorded in `_migrations`. Never edit an applied migration; add a new one.
 - Store refresh tokens in the OS keychain via `keyring`, never in SQLite and never in a config file.
 - Serialize errors across the IPC boundary as `{ code, message }`.

@@ -1,0 +1,2 @@
+# Keeps clippy from suggesting APIs newer than the toolchain we pin in rust-toolchain.toml.
+msrv = "1.99"
