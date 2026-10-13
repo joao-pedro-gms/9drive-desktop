@@ -21,6 +21,10 @@ pub enum AppError {
 
     #[error("serialization error: {0}")]
     Serde(#[from] serde_json::Error),
+    /// A remote provider failed. The sync engine and the upload queue are the only places that
+    /// surface one, and they hand it straight to the IPC boundary rather than re-wrapping it.
+    #[error("storage error: {0}")]
+    Storage(#[from] drive_storage::error::ProviderError),
 }
 
 impl AppError {
@@ -36,6 +40,10 @@ impl AppError {
             Self::InvalidInput(_) => "invalid_input",
             Self::Conflict(_) => "conflict",
             Self::Serde(_) => "serde_error",
+            // Forwarded, not re-coded: `ProviderError::code()` is already the stable contract
+            // the provider tests assert, and the two overlapping codes (`not_found`,
+            // `conflict`) mean the same thing to the frontend either way.
+            Self::Storage(err) => err.code(),
         }
     }
 }

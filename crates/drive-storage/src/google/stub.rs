@@ -1,7 +1,10 @@
 //! A local HTTP/1.1 stub: answers each request from a queue of canned replies and records
-//! what it received. Test-only, so the provider can be exercised without touching Google.
+//! what it received, plus the temp files the upload tests read. Test-only, so the provider can
+//! be exercised without touching Google.
 
 use std::net::Ipv4Addr;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -10,6 +13,49 @@ use tokio::net::{TcpListener, TcpStream};
 pub struct Stub {
     pub base: String,
     received: Arc<Mutex<Vec<Request>>>,
+}
+
+/// A real file on disk, deleted when the test ends. A guard rather than a trailing
+/// `remove_file`, because a failed assertion would otherwise skip the cleanup.
+pub struct TempFile {
+    path: PathBuf,
+    len: u64,
+}
+
+impl TempFile {
+    pub fn of_len(len: usize) -> Self {
+        let source = Self { path: Self::unique_path(), len: len as u64 };
+        std::fs::write(&source.path, vec![b'x'; len]).expect("write the source file");
+        source
+    }
+
+    /// A path nothing was ever written to, for the case where the file is not there at all.
+    pub fn absent() -> Self {
+        Self { path: Self::unique_path(), len: 0 }
+    }
+
+    pub fn path(&self) -> &str {
+        self.path.to_str().expect("temp path is utf-8")
+    }
+
+    pub fn len(&self) -> u64 {
+        self.len
+    }
+
+    fn unique_path() -> PathBuf {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        std::env::temp_dir().join(format!(
+            "drive-storage-{}-{}.bin",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ))
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
 }
 
 #[derive(Clone)]
@@ -43,6 +89,8 @@ pub struct Reply {
     status: u16,
     body: Vec<u8>,
     headers: Vec<(String, String)>,
+    /// Answer nothing and close instead, so the client sees the connection die mid-request.
+    dropped: bool,
 }
 
 impl Reply {
@@ -53,7 +101,7 @@ impl Reply {
     /// Byte-exact body for binary replies. [`Reply::new`] takes a `&str`, so it cannot carry
     /// a payload that is not valid UTF-8.
     pub fn bytes(status: u16, body: Vec<u8>) -> Self {
-        Self { status, body, headers: Vec::new() }
+        Self { status, body, headers: Vec::new(), dropped: false }
     }
 
     pub fn json(status: u16, body: &str) -> Self {
@@ -62,6 +110,12 @@ impl Reply {
 
     pub fn empty(status: u16) -> Self {
         Self::new(status, "")
+    }
+
+    /// The connection dies before a reply reaches the client, which is what a transport
+    /// failure looks like from the provider's side.
+    pub fn dropped() -> Self {
+        Self { status: 0, body: Vec::new(), headers: Vec::new(), dropped: true }
     }
 
     pub fn header(mut self, name: &str, value: &str) -> Self {
@@ -115,6 +169,10 @@ impl Stub {
 }
 
 fn render(reply: &Reply) -> Vec<u8> {
+    if reply.dropped {
+        // Nothing at all: the client sees the connection die mid-request.
+        return Vec::new();
+    }
     let mut out = format!(
         "HTTP/1.1 {} {}\r\nContent-Length: {}\r\nConnection: close\r\n",
         reply.status,

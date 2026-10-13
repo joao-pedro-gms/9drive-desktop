@@ -5,10 +5,16 @@
 
 pub mod db;
 pub mod error;
+pub mod import;
 pub mod models;
+pub mod progress;
 pub mod repos;
+pub mod routing;
+pub mod sync_engine;
+pub mod upload_queue;
 
 pub use error::{AppError, IpcError, Result};
+pub use progress::{ProgressEvent, ProgressSink, SyncState, UploadState};
 
 /// Crate version, surfaced to the app so the UI can display it.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

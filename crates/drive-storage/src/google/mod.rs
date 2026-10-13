@@ -15,8 +15,8 @@ mod transfer;
 use async_trait::async_trait;
 
 use self::map::{DriveFile, FILE_FIELDS, remote_file};
-use crate::error::{ProviderError, Result};
-use crate::provider::StorageProvider;
+use crate::error::Result;
+use crate::provider::{StorageProvider, UploadProgress};
 use crate::types::{
     AccountInfo, ChangePage, FolderListing, ProviderKind, Quota, Range, RemoteFile, UploadRequest,
 };
@@ -93,10 +93,22 @@ impl StorageProvider for GoogleDrive {
         GoogleDrive::changes(self, page_token).await
     }
 
-    async fn upload(&self, req: UploadRequest) -> Result<RemoteFile> {
-        let data = std::fs::read(&req.source_path)
-            .map_err(|err| ProviderError::LocalIo(format!("{}: {err}", req.source_path)))?;
-        GoogleDrive::upload(self, &req.parent_id, &req.name, data, &req.mime_type).await
+    async fn upload(
+        &self,
+        req: UploadRequest,
+        progress: Option<&UploadProgress>,
+    ) -> Result<RemoteFile> {
+        // The provider reads and validates the file itself; nothing buffers it in between.
+        GoogleDrive::upload(
+            self,
+            &req.parent_id,
+            &req.name,
+            &req.mime_type,
+            &req.source_path,
+            req.size_bytes,
+            progress,
+        )
+        .await
     }
 
     async fn download(&self, file_id: &str, range: Option<Range>) -> Result<Vec<u8>> {
@@ -125,8 +137,12 @@ impl std::fmt::Debug for GoogleDrive {
 
 #[cfg(test)]
 mod tests {
-    use super::stub::{Reply, Stub};
+    use std::sync::{Arc, Mutex};
+
+    use super::stub::{Reply, Stub, TempFile};
     use super::*;
+
+    const UPLOADED: &str = r#"{"id":"new-1","name":"notes.txt","mimeType":"text/plain","sizeBytes":"5","capabilities":{"canDownload":true}}"#;
 
     #[test]
     fn default_endpoints_are_google() {
@@ -172,5 +188,38 @@ mod tests {
         assert_eq!(found, "folder-1");
         assert_eq!(stub.request_count(), 1);
         assert_eq!(provider.kind(), ProviderKind::Google);
+    }
+
+    /// The forwarding impl used to `fs::read` the whole file into memory. It must now hand the
+    /// path and the progress hook straight over, with the provider doing the reading.
+    #[tokio::test]
+    async fn the_trait_upload_streams_the_file_and_hands_progress_through() {
+        let chunks = Stub::start(vec![Reply::json(200, UPLOADED)]).await;
+        let meta = Stub::start(vec![
+            Reply::empty(200).header("Location", &format!("{}/session", chunks.base)),
+        ])
+        .await;
+        let drive = GoogleDrive::with_endpoints("token", &meta.base, &meta.base);
+        let provider: &dyn StorageProvider = &drive;
+        let source = TempFile::of_len(5);
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let report = {
+            let sink = Arc::clone(&seen);
+            move |bytes: u64| sink.lock().expect("the progress lock").push(bytes)
+        };
+        let req = UploadRequest {
+            parent_id: "parent-1".into(),
+            name: "notes.txt".into(),
+            mime_type: "text/plain".into(),
+            size_bytes: source.len(),
+            source_path: source.path().into(),
+        };
+
+        let uploaded = provider.upload(req, Some(&report)).await.expect("upload through the trait");
+
+        assert_eq!(uploaded.id, "new-1");
+        assert_eq!(chunks.requests()[0].header("content-range"), Some("bytes 0-4/5"));
+        assert_eq!(chunks.requests()[0].body, "xxxxx");
+        assert_eq!(*seen.lock().expect("the progress lock"), vec![5]);
     }
 }

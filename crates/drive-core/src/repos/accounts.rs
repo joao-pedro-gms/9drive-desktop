@@ -49,6 +49,15 @@ pub fn update(conn: &Connection, id: i64, name: &str, last_used_at: Option<i64>)
     require_changed(changed, "account", id)
 }
 
+/// Set once the sync engine has confirmed which Drive folder backs this account.
+pub fn set_drive_folder_id(conn: &Connection, id: i64, drive_folder_id: &str) -> Result<()> {
+    let changed = conn.execute(
+        "UPDATE accounts SET drive_folder_id = ?2 WHERE id = ?1",
+        params![id, drive_folder_id],
+    )?;
+    require_changed(changed, "account", id)
+}
+
 /// Cascades to `account_quota`, `sync_state` and `files` (ON DELETE CASCADE).
 pub fn delete(conn: &Connection, id: i64) -> Result<()> {
     let changed = conn.execute("DELETE FROM accounts WHERE id = ?1", [id])?;
