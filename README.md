@@ -11,9 +11,9 @@ Built with **Tauri v2** (Rust backend) and **Svelte 5**.
 
 ## Status: rewrite in progress
 
-This repository started as a web app (`backend/` + `frontend/`, Express + React + MySQL).
-It is being rewritten as a native desktop app. The web app still lives in `backend/` and
-`frontend/` as read-only reference and will be removed at cutover.
+This repository started as a web app (Express + React + MySQL). It is being rewritten as a
+native desktop app. The web app now lives under [`legacy/`](legacy/) as read-only reference
+and will be removed at cutover.
 
 - Roadmap: [`docs/rewrite-plan.md`](docs/rewrite-plan.md)
 - Progress: [the epic issues](https://github.com/joao-pedro-gms/9drive-desktop/issues?q=is%3Aissue+is%3Aopen+label%3Aepic)
@@ -94,7 +94,8 @@ crates/
   9drive-core/       domain types, errors, SQLite, sync engine, upload routing
   9drive-storage/    StorageProvider trait + Google Drive implementation
 docs/rewrite-plan.md the rewrite plan
-backend/  frontend/  legacy web app, removed at cutover
+legacy/               legacy web app, removed at cutover
+  backend/ frontend/ Express + React + MySQL app
 ```
 
 The Rust side is split in two so that core logic can be tested without rebuilding the whole

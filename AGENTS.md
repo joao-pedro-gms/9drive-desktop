@@ -6,8 +6,8 @@ This repository is mid-rewrite. The original web app (Express + React + MySQL) i
 replaced by a native desktop app. The plan lives in `docs/rewrite-plan.md`; progress is
 tracked by the GitHub issues labelled `epic`.
 
-- **Still on disk:** `backend/` and `frontend/` — the old web app. Read-only reference.
-  Do not add features there.
+- **Still on disk:** `legacy/backend/` and `legacy/frontend/` — the old web app. Read-only
+  reference. Do not add features there.
 - **Not created yet:** `src-tauri/`, `crates/`, root `Cargo.toml`, root `package.json`.
 - These instructions describe the **target** architecture. When the Rust and Svelte
   sources exist, they are authoritative; until then the conventions below tell you where
@@ -35,8 +35,9 @@ Target layout:
 
 Legacy (to be deleted at cutover):
 
-- `backend/`, `frontend/`: previous Express + React + MySQL app.
-- `docker-compose.yml`, `.env.docker.example`, `setup.ps1`, `setup.sh`: previous web app tooling.
+- `legacy/backend/`, `legacy/frontend/`: previous Express + React + MySQL app.
+- `legacy/docker-compose.yml`, `legacy/.env.docker.example`, `legacy/setup.ps1`,
+  `legacy/setup.sh`: previous web app tooling.
 
 ## Requirements
 
