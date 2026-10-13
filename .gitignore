@@ -3,6 +3,11 @@ dist/
 *.log
 .DS_Store
 
+# Agent / editor local state
+.opencode/
+.idea/
+.vscode/
+
 # Secrets
 .env
 backend/.env
@@ -12,6 +17,13 @@ backend/.env.*.local
 # Databases
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+
+# Rust / Tauri build output
+/target/
+src-tauri/target/
+src-tauri/gen/schemas/
 
 # Local env is non-secret by default, keep example in repo instead.
 frontend/.env.local

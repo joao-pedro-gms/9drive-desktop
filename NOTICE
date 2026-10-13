@@ -1,0 +1,16 @@
+9drive-desktop
+Copyright 2026 Joao Pedro Gomes
+
+This product includes software developed as part of the 9Drive project.
+
+Upstream project:
+  9Drive — Copyright 2026 Zenhosta
+  https://github.com/zenhosta/9drive
+  Licensed under the Apache License, Version 2.0
+
+This distribution is a desktop rewrite of 9Drive: the Express/TypeScript backend and the
+React frontend have been replaced by a Rust (Tauri v2) backend and a Svelte 5 frontend.
+The original source remains available at the upstream URL above and in the git history
+of this repository.
+
+Licensed under the Apache License, Version 2.0. See LICENSE for details.
