@@ -4,10 +4,12 @@
 //! crate is allowed to call a provider API directly.
 
 pub mod error;
+pub mod google;
 pub mod provider;
 pub mod types;
 
 pub use error::{ProviderError, Result};
+pub use google::GoogleDrive;
 pub use provider::StorageProvider;
 pub use types::*;
 

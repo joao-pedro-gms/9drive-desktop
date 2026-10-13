@@ -55,6 +55,14 @@ impl ProviderError {
             Self::LocalIo(_) => "local_io",
         }
     }
+
+    /// Seconds the provider asked the caller to wait, from `Retry-After`.
+    pub fn retry_after(&self) -> Option<u64> {
+        match self {
+            Self::RateLimited { retry_after, .. } => *retry_after,
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
