@@ -68,8 +68,14 @@ pub struct FolderListing {
 pub struct ChangePage {
     pub changes: Vec<RemoteFile>,
     pub deleted_ids: Vec<String>,
+    /// Paging within the current run. `None` on the last page, where `new_start_page_token`
+    /// is the one that matters.
     pub next_page_token: Option<String>,
     pub has_more: bool,
+    /// Token to store and pass to the next `changes` call once this run finishes. Drive only
+    /// returns it on the final page, and it is the only way to resume the feed where this run
+    /// stopped instead of replaying the whole window.
+    pub new_start_page_token: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,6 +108,10 @@ impl Range {
 
     pub fn end(&self) -> u64 {
         self.end
+    }
+
+    pub fn start(&self) -> u64 {
+        self.start
     }
 }
 

@@ -12,8 +12,16 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait.workspace = true
+# `json` for the Drive API's JSON request and response bodies, `rustls` because the
+# provider only ever talks HTTPS. `form` rides along from the workspace entry but the
+# Drive provider never posts a form body.
+reqwest.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
+# A regular dependency, not a dev one: the provider is async, and the stub server its
+# tests need is built on the same runtime.
+tokio.workspace = true
 
 [features]
 default = []
