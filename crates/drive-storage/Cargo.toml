@@ -1,0 +1,22 @@
+[package]
+name = "drive-storage"
+description = "StorageProvider trait and provider implementations for 9Drive Desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[features]
+default = []
+# Placeholder for the S3 provider deferred by docs/rewrite-plan.md (D9). Deliberately
+# empty: Google Drive is the only provider until S3 is unblocked.
+s3 = []

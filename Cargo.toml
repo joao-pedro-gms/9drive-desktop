@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = ["crates/drive-core", "crates/drive-storage"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "Apache-2.0"
+repository = "https://github.com/joao-pedro-gms/9drive-desktop"
+
+# Shared dependency versions. Adding a crate is a workspace-level decision: put the
+# version here and reference it with `dep.workspace = true` from the crate manifests.
+[workspace.dependencies]
+async-trait = "0.1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
