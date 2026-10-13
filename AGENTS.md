@@ -27,14 +27,19 @@ There is no HTTP server, no user account, and no database server. Everything is 
 
 Target layout:
 
-- `src-tauri/`: Tauri v2 crate. Thin layer: app state, IPC commands, plugins, OAuth loopback listener.
+- `src-tauri/`: Tauri v2 crate. Thin layer: app state, IPC commands, plugins.
 - `crates/drive-core/`: domain types, errors, config, SQLite access, migrations, sync engine, upload routing.
 - `crates/drive-storage/`: `StorageProvider` trait plus the Google Drive implementation.
+- `crates/drive-oauth/`: Google OAuth mechanics. Loopback listener, PKCE, token exchange, keychain.
 - `src/`: Svelte 5 frontend. `src/lib/ipc.ts` is the typed IPC boundary.
 - `Cargo.toml`: Cargo workspace. `package.json`: frontend tooling only.
 
-Cargo rejects package names starting with a digit, so the crates drop the plan's `9drive` prefix
-and are `drive-core` and `drive-storage`.
+Two deviations from `docs/rewrite-plan.md`, both deliberate:
+
+- Cargo rejects package names starting with a digit, so the crates drop the plan's `9drive` prefix.
+- The plan puts the OAuth loopback listener in `src-tauri/src/oauth/`. That crate does not exist until
+  F5, and a `src-tauri` directory holding no Tauri would be worse than one more library crate, so the
+  mechanics live in `drive-oauth` with no `tauri` dependency. F5's command calls into it.
 
 Legacy (to be deleted at cutover):
 

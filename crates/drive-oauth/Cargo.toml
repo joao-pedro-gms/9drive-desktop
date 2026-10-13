@@ -1,0 +1,22 @@
+[package]
+name = "drive-oauth"
+description = "Google OAuth for 9Drive Desktop: loopback listener, PKCE, token exchange, keychain storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+base64.workspace = true
+getrandom.workspace = true
+keyring.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
