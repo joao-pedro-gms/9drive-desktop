@@ -135,7 +135,7 @@ Upload resumable: `POST …/upload/drive/v3/files?uploadType=resumable` → lê 
 `accounts`: `list_accounts` · `begin_google_auth` · `complete_google_auth` · `disconnect_account` · `sync_account_quota`
 `folders`: `list_folders` · `create_folder` · `rename_folder` · `move_folder` · `delete_folder` · `recent_folders`
 `files`: `list_files` · `get_file` · `search_files` · `rename_file` · `move_files` · `batch_update` ·
-`delete_files` · `toggle_star` · `toggle_archive` · `sync_google`
+`delete_files` · `trash_files` · `untrash_files` · `toggle_star` · `toggle_archive` · `sync_google`
 `upload`: `start_upload_batch` · `cancel_upload` · `retry_upload`
 `preview/download`: `preview_data` (bytes p/ blob URL) · `save_file_as`
 `settings`: `get_settings` · `set_settings` · `set_google_client_id` · `open_app_dir` · `app_info`
