@@ -74,6 +74,33 @@ mod tests {
         stub.request().await;
     }
 
+    /// Same guarantee as the exchange, on the arm that matters most here: the failure of
+    /// a refresh grant must not print the refresh token back (issue #25).
+    #[tokio::test]
+    async fn an_invalid_grant_message_never_carries_the_response_body() {
+        let stub = Stub::start(
+            400,
+            r#"{"error":"invalid_grant","error_description":"expired or revoked","refresh_token":"1//PLANTED"}"#,
+        )
+        .await;
+
+        let err = refresh_access_token(
+            &reqwest::Client::new(),
+            &Endpoints { token: stub.url.clone(), ..Endpoints::default() },
+            "id",
+            "1//revoked",
+        )
+        .await
+        .expect_err("must fail");
+
+        assert_eq!(err.code(), "reauthenticate");
+        assert!(err.to_string().contains("expired or revoked"), "the reason must survive: {err}");
+        for rendered in [err.to_string(), format!("{err:?}")] {
+            assert!(!rendered.contains("PLANTED"), "the body must not be echoed: {rendered}");
+        }
+        stub.request().await;
+    }
+
     #[tokio::test]
     async fn debug_never_prints_the_refreshed_token() {
         let tokens = TokenSet {

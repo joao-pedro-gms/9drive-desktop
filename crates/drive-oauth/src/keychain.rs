@@ -41,16 +41,13 @@ mod tests {
     const ROUND_TRIP_ACCOUNT: &str = "drive-oauth-self-test-rt@example.invalid";
     const MISSING_ACCOUNT: &str = "drive-oauth-self-test-absent@example.invalid";
 
+    // Both tests below need a real OS credential store, so they are #[ignore]d: on a CI
+    // runner without one they silently passed, which is the vacuity issue #25 is about.
+    // Run them deliberately with `cargo test -p drive-oauth -- --ignored`.
     #[test]
+    #[ignore = "requires an OS credential store"]
     fn store_read_delete_round_trip() {
-        if !is_available() {
-            eprintln!("skipping keychain round-trip: this platform has no credential store");
-            return;
-        }
-        if let Err(err) = store_refresh_token(ROUND_TRIP_ACCOUNT, "self-test-refresh-token") {
-            eprintln!("skipping keychain round-trip: {err}");
-            return;
-        }
+        store_refresh_token(ROUND_TRIP_ACCOUNT, "self-test-refresh-token").expect("store");
 
         assert_eq!(
             read_refresh_token(ROUND_TRIP_ACCOUNT).expect("read"),
@@ -62,11 +59,8 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires an OS credential store"]
     fn errors_are_translated_not_leaked_as_keyring_types() {
-        if !is_available() {
-            eprintln!("skipping keychain error test: this platform has no credential store");
-            return;
-        }
         match read_refresh_token(MISSING_ACCOUNT) {
             Ok(_) => panic!("an account that was never stored must not resolve"),
             Err(err) => assert_eq!(err.code(), "keychain"),
