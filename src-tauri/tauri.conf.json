@@ -27,6 +27,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "category": "Utility",
+    "shortDescription": "One dashboard for every Google Drive account",
+    "longDescription": "9Drive Desktop turns one or more Google Drive accounts into a single storage dashboard: combined quota, uploads routed to the account with room, virtual folders, preview, download and incremental sync of the 9drive folder. Everything is local — there is no server and no 9Drive account.",
+    "publisher": "9Drive",
+    "homepage": "https://github.com/joao-pedro-gms/9drive-desktop",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
