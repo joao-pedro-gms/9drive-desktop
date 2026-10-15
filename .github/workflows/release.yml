@@ -1,0 +1,90 @@
+name: Release
+
+# A tag is the only trigger: every build here produces a signed-by-nothing installer that lands
+# in a GitHub Release, and the version has to match `package.json` and `tauri.conf.json`.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # label                        os               target                        bundles
+          - label: macOS (Apple silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - label: macOS (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bundles: dmg
+          - label: Windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: msi
+          - label: Linux (AppImage)
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage
+          - label: Linux (.deb)
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb
+    steps:
+      - uses: actions/checkout@v5
+
+      # The webview system libraries. Without them the Linux builds die in `glib-sys` before the
+      # bundler is even reached; the same list as the CI rust job.
+      - name: Install Tauri system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --assume-yes \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `rust-toolchain.toml` pins 1.99.0, which cargo picks up from the workspace root on its own.
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 9Drive Desktop ${{ github.ref_name }}
+          releaseBody: |
+            Installers for 9Drive Desktop.
+
+            Windows: run the `.msi` (or the `-setup.exe`).
+            macOS: open the `.dmg` and drag the app to Applications.
+            Linux: the `.AppImage` runs anywhere; the `.deb` installs on Debian and Ubuntu.
+
+            Unsigned builds trip SmartScreen and Gatekeeper. See the README for what to click
+            through, and for how to build with your own signing identity.
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}

@@ -10,9 +10,7 @@ dist/
 
 # Secrets
 .env
-legacy/backend/.env
-legacy/backend/.env.local
-legacy/backend/.env.*.local
+.env.local
 
 # Databases
 *.db
@@ -24,7 +22,3 @@ legacy/backend/.env.*.local
 /target/
 src-tauri/target/
 src-tauri/gen/schemas/
-
-# Local env is non-secret by default, keep example in repo instead.
-legacy/frontend/.env.local
-legacy/frontend/.env.*.local

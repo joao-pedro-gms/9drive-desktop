@@ -1,4 +1,4 @@
-/* `source(none)`: automatic detection would also scan legacy/frontend. */
+/* `source(none)`: automatic detection would walk the whole repo, including build output. */
 @import 'tailwindcss' source(none);
 @source './**/*.{svelte,ts}';
 
