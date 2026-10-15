@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Re-running the gate on a branch that has not moved is a normal thing to want: a flaky runner,
+  # a half-finished rebase, or a release branch cut from an old merge.
+  workflow_dispatch:
 
 permissions:
   contents: read
