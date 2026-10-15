@@ -5,7 +5,14 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Re-running a release build without moving a tag: a runner died, a bundle
+  # needs rebuilding, or a matrix row was added after the tag went out.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag whose release the artifacts are attached to'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -80,7 +87,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ inputs.tag || github.ref_name }}
           releaseName: 9Drive Desktop ${{ github.ref_name }}
           releaseBody: |
             Installers for 9Drive Desktop.
