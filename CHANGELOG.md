@@ -7,9 +7,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-The web application has been rewritten as a native desktop app, and the cutover has happened: the
-old `legacy/` tree is gone from this branch and stays readable in the git history and in
-[zenhosta/9drive](https://github.com/zenhosta/9drive).
+## [0.1.0] — 2026-10-15
+
+The first desktop build. The web application has been rewritten as a native desktop app, and the
+cutover has happened: the old `legacy/` tree is gone from this branch and stays readable in the git
+history and in [zenhosta/9drive](https://github.com/zenhosta/9drive).
 
 ### Added
 
@@ -51,4 +53,5 @@ These features have no place in a single-user local desktop app and will not com
 - Pause and cancel take effect between files, not mid-file.
 - Virtual folders are local and do not sync between machines.
 
-[Unreleased]: https://github.com/joao-pedro-gms/9drive-desktop/compare/main...HEAD
+[Unreleased]: https://github.com/joao-pedro-gms/9drive-desktop/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/joao-pedro-gms/9drive-desktop/releases/tag/v0.1.0
