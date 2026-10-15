@@ -41,7 +41,9 @@ jobs:
           - label: Windows
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: msi
+            # Both: the MSI installs silently and is what MDM wants, the NSIS setup is what a
+            # person double-clicking a download expects.
+            bundles: msi,nsis
           - label: Linux (AppImage)
             os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu

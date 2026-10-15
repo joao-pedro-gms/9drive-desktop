@@ -136,7 +136,7 @@ Installers are published as GitHub Releases, one per platform:
 
 | Platform | File |
 | --- | --- |
-| Windows | `.msi` |
+| Windows | `.msi` (silent, for MDM) and `-setup.exe` (NSIS, for a person) |
 | macOS (Apple silicon and Intel) | `.dmg` |
 | Linux | `.AppImage` and `.deb` |
 
@@ -146,6 +146,28 @@ publish when you are happy with them.
 
 Until the app is signed, Windows SmartScreen and macOS Gatekeeper will warn on first launch. That
 is a signing problem, not a broken build: see **Known limitations**.
+
+### Making a release
+
+```bash
+# the version has to match in package.json, tauri.conf.json and Cargo.toml
+npm version 0.1.0
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+The workflow builds all five targets and attaches them to a draft Release.
+
+If the tag-push run fails with **`Resource not accessible by integration`** on *create-a-release*,
+this repository's default `GITHUB_TOKEN` is read-only for that event and the release never gets
+created. Two ways around it, neither of which needs a code change:
+
+```bash
+# re-run the same matrix against the tag that already exists
+gh workflow run release.yml --ref main -f tag=v0.1.0
+```
+
+or set **Settings → Actions → General → Workflow permissions** to *Read and write permissions*, so
+the explicit `permissions: contents: write` in the workflow is honoured on tag pushes too.
 
 ## License
 
