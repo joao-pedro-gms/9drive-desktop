@@ -68,6 +68,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The hosted macOS runners are Apple silicon and ship only `aarch64-apple-darwin`, so the
+      # Intel row fails with "target is not installed" unless it is added explicitly. This is a
+      # no-op for the rows whose target is already the host's.
+      - name: Install the Rust target
+        run: rustup target add ${{ matrix.target }}
+
       # `rust-toolchain.toml` pins 1.99.0, which cargo picks up from the workspace root on its own.
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
