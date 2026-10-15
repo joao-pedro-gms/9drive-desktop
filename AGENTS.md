@@ -2,16 +2,14 @@
 
 ## Status
 
-This repository is mid-rewrite. The original web app (Express + React + MySQL) is being
-replaced by a native desktop app. The plan lives in `docs/rewrite-plan.md`; progress is
-tracked by the GitHub issues labelled `epic`.
+The rewrite is done. `docs/rewrite-plan.md` is the plan it followed; progress was tracked by the
+GitHub issues labelled `epic`, and the phase that each PR closed is recorded there.
 
-- **Still on disk:** `legacy/backend/` and `legacy/frontend/` — the old web app. Read-only
-  reference. Do not add features there.
-- **Not created yet:** `src-tauri/`, `crates/`, root `Cargo.toml`, root `package.json`.
-- These instructions describe the **target** architecture. When the Rust and Svelte
-  sources exist, they are authoritative; until then the conventions below tell you where
-  the new code is supposed to go.
+- **Cut over:** `legacy/backend/` and `legacy/frontend/` — the old Express + React + MySQL web app —
+  were removed with the `0.1.0` release. They remain readable in the git history and in the
+  upstream, [zenhosta/9drive](https://github.com/zenhosta/9drive).
+- **This file describes the code as it is.** Where the Rust and Svelte sources and the CI disagree
+  with it, the sources win and this file is what needs fixing.
 
 ## Project Overview
 
@@ -36,16 +34,17 @@ Target layout:
 
 Two deviations from `docs/rewrite-plan.md`, both deliberate:
 
+Two deviations from `docs/rewrite-plan.md`, both deliberate and both now real:
+
 - Cargo rejects package names starting with a digit, so the crates drop the plan's `9drive` prefix.
-- The plan puts the OAuth loopback listener in `src-tauri/src/oauth/`. That crate does not exist until
-  F5, and a `src-tauri` directory holding no Tauri would be worse than one more library crate, so the
-  mechanics live in `drive-oauth` with no `tauri` dependency. F5's command calls into it.
+- The plan puts the OAuth loopback listener in `src-tauri/src/oauth/`. That crate did not exist when
+  the phases were planned, and a `src-tauri` directory holding no Tauri would be worse than one more
+  library crate, so the mechanics live in `drive-oauth` with no `tauri` dependency. The F5 command
+  calls into it.
 
-Legacy (to be deleted at cutover):
-
-- `legacy/backend/`, `legacy/frontend/`: previous Express + React + MySQL app.
-- `legacy/docker-compose.yml`, `legacy/.env.docker.example`, `legacy/setup.ps1`,
-  `legacy/setup.sh`: previous web app tooling.
+A third deviation came from CI: `src-tauri` links the webview, so the Linux CI and release jobs
+install Tauri's system libraries (`libwebkit2gtk-4.1-dev` and friends) before touching Rust. Without
+them the build dies in `glib-sys` before it reaches any of our code.
 
 ## Requirements
 
@@ -132,12 +131,14 @@ Manual smoke test:
 
 ## Agent Rules
 
-- Follow the current phase in the GitHub epic issues. Do not start phase N+1 work unasked.
+- Follow the open epic issues. Do not start work beyond what is asked.
 - Prefer small, targeted changes, one PR per phase where practical.
 - Preserve existing architecture and naming.
 - Do not introduce new dependencies unless necessary, and say why in the PR.
 - Do not commit secrets.
-- Do not edit `legacy/`, build output, or generated files.
-- Do not store anything credential-like outside the OS keychain.
+- Do not edit build output or generated files. (`src-tauri/gen/` and `dist/` are generated; so is
+  everything under `src-tauri/icons/` — change `assets/icon.png` and run `npm run tauri icon`.)
+- Do not store anything credential-like outside the OS keychain. `localStorage` may hold the theme
+  name and nothing else.
 - Do not change the Google OAuth scope without flagging it: `drive` is a restricted scope
   and changing it invalidates existing authorizations.
