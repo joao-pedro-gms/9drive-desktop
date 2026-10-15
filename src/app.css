@@ -1,0 +1,40 @@
+/* `source(none)`: automatic detection would also scan legacy/frontend. */
+@import 'tailwindcss' source(none);
+@source './**/*.{svelte,ts}';
+
+/*
+ * Palette lives on :root so `[data-theme='light']` can swap it at runtime;
+ * @theme inline re-points the Tailwind tokens (bg-surface, text-muted, ...)
+ * at those variables instead of baking in the dark values.
+ */
+:root {
+  color-scheme: dark;
+  --surface: #101114;
+  --background: #0b0b0d;
+  --foreground: #e8e9ec;
+  --border: #26282e;
+  --muted: #9aa0ab;
+  --accent: #4c8dff;
+  --danger: #e5484d;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --surface: #ffffff;
+  --background: #f5f6f8;
+  --foreground: #16181c;
+  --border: #dcdee3;
+  --muted: #5f6672;
+  --accent: #1f6feb;
+  --danger: #d13438;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+}

@@ -1,0 +1,41 @@
+[package]
+name = "nine-drive-desktop"
+description = "Tauri host process for 9Drive Desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# `src/main.rs` is a two-line shim so the whole app lives in the library: the protocol handler,
+# the plugins and the commands all need to be reachable from tests without spawning a webview.
+[lib]
+name = "nine_drive_desktop"
+path = "src/lib.rs"
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+drive-core.workspace = true
+drive-oauth.workspace = true
+drive-storage.workspace = true
+# `state::AppState::new` takes the bare `rusqlite::Connection` the domain crate hands out, so the
+# type has to be nameable here even though no SQL is written in this crate.
+rusqlite.workspace = true
+# Every command argument and every command return type crosses IPC as serde: `FileQuery`,
+# `FilePatch`, `ByteRange`, `AppInfo`, `AuthRequest`, `UploadTask`, `SyncOutcome`. Already a
+# workspace dependency (drive-core uses it); Tauri exposes no re-export of its own.
+serde.workspace = true
+tauri.workspace = true
+tauri-plugin-autostart.workspace = true
+tauri-plugin-dialog.workspace = true
+tauri-plugin-log.workspace = true
+tauri-plugin-opener.workspace = true
+tauri-plugin-single-instance.workspace = true
+tauri-plugin-window-state.workspace = true
+# `AppState::provider` refreshes the keychain's refresh token before building a GoogleDrive.
+reqwest.workspace = true
+tokio.workspace = true
+# `tauri-plugin-log` installs the subscriber these macros write through.
+tracing.workspace = true

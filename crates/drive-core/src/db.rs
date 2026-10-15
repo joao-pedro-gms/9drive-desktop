@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::Connection;
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 
 /// Every file in `migrations/`, applied in name order. Never edit an applied migration:
 /// add a new numbered file instead.
@@ -37,6 +37,29 @@ fn configure(conn: &Connection) -> Result<()> {
     // in SQLite and the cascade rules in the schema depend on it.
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
     Ok(())
+}
+
+/// The connection handle the async layers hold.
+///
+/// AGENTS.md puts one `Mutex<Connection>` in Tauri state, and a plain `&Connection` cannot
+/// cross an `.await`: `Connection` is `Send` but not `Sync`. Neither can the guard, because
+/// `MutexGuard` is not `Send`. So the handle is the `Arc<Mutex<_>>` and [`with_conn`] re-borrows
+/// per operation, which also makes "never hold the guard across an await" a compile error
+/// instead of a review rule.
+pub type SharedConn = std::sync::Arc<std::sync::Mutex<Connection>>;
+
+/// Runs one database operation under the shared lock. Deliberately not `async`: a scope that
+/// could span an await point is the bug this shape exists to prevent.
+pub fn with_conn<T>(conn: &SharedConn, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+    let guard = conn
+        .lock()
+        .map_err(|_| AppError::Conflict("database mutex poisoned by a panicking thread".into()))?;
+    f(&guard)
+}
+
+/// Wraps a bare `Connection` for the async layers and for tests.
+pub fn shared(conn: Connection) -> SharedConn {
+    std::sync::Arc::new(std::sync::Mutex::new(conn))
 }
 
 /// Applies pending migrations, returning how many ran.
@@ -78,6 +101,7 @@ pub(crate) fn test_conn() -> Connection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     #[test]
     fn open_in_memory_applies_every_migration_and_records_it() {
@@ -114,6 +138,41 @@ mod tests {
             .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
             .expect("pragma is readable");
         assert_eq!(enabled, 1);
+    }
+
+    #[test]
+    fn with_conn_runs_under_the_shared_lock_and_releases_it() {
+        let conn = shared(test_conn());
+        with_conn(&conn, |c| {
+            c.execute("INSERT INTO settings (key, value) VALUES ('a', 'b')", [])?;
+            Ok(())
+        })
+        .expect("the insert runs under the shared lock");
+
+        let value: String = with_conn(&conn, |c| {
+            Ok(c.query_row("SELECT value FROM settings WHERE key = 'a'", [], |r| r.get(0))?)
+        })
+        .unwrap();
+        assert_eq!(value, "b");
+
+        // Two locks in a row must both succeed: the guard is dropped at the end of `with_conn`,
+        // so the second call is not poisoned or deadlocked.
+        assert!(with_conn(&conn, |c| Ok(c.prepare("SELECT 1")?.exists([])?)).is_ok());
+    }
+
+    #[test]
+    fn a_poisoned_lock_surfaces_as_an_error_not_a_panic() {
+        let conn = shared(test_conn());
+        let clone = Arc::clone(&conn);
+        let _ = std::thread::spawn(move || {
+            let _held = clone.lock().unwrap();
+            panic!("boom");
+        })
+        .join();
+
+        let err = with_conn(&conn, |_| Ok(())).unwrap_err();
+        assert_eq!(err.code(), "conflict");
+        assert!(err.to_string().contains("poisoned"));
     }
 
     #[test]

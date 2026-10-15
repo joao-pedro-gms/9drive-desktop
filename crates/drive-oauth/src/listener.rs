@@ -26,10 +26,17 @@ main{text-align:center}h1{font-size:1.5rem}p{color:#94a3b8}</style></head><body>
 pub struct Loopback {
     listener: TcpListener,
     port: u16,
+    timeout: Duration,
 }
 
 impl Loopback {
     pub async fn bind() -> Result<Self> {
+        Self::bind_with_timeout(WAIT_TIMEOUT).await
+    }
+
+    /// The give-up deadline is a parameter so the abandon path is testable without
+    /// spending 30 seconds on it.
+    pub(crate) async fn bind_with_timeout(timeout: Duration) -> Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
             .await
             .map_err(|e| OAuthError::Listener(format!("bind 127.0.0.1:0: {e}")))?;
@@ -37,7 +44,7 @@ impl Loopback {
             .local_addr()
             .map_err(|e| OAuthError::Listener(format!("local_addr: {e}")))?
             .port();
-        Ok(Self { listener, port })
+        Ok(Self { listener, port, timeout })
     }
 
     pub fn port(&self) -> u16 {
@@ -51,7 +58,7 @@ impl Loopback {
 
     /// Answers one redirect and drops the socket, so the port is free again.
     pub async fn wait_for_code(self, expected: &State) -> Result<String> {
-        let Self { listener, .. } = self;
+        let Self { listener, timeout, .. } = self;
 
         let exchange = async {
             let (mut stream, _) = listener
@@ -64,7 +71,7 @@ impl Loopback {
             outcome
         };
 
-        match tokio::time::timeout(WAIT_TIMEOUT, exchange).await {
+        match tokio::time::timeout(timeout, exchange).await {
             Ok(result) => result,
             Err(_) => Err(OAuthError::Cancelled(
                 "the browser never returned to the loopback listener".into(),
@@ -179,6 +186,18 @@ mod tests {
         response
     }
 
+    /// Nothing is listening on `port` any more, so the OS hands it straight back.
+    /// (A connect() probe is unreliable here: Windows loopback drops the SYN instead
+    /// of refusing it.)
+    async fn assert_port_is_free(port: u16) {
+        let rebind = tokio::time::timeout(
+            Duration::from_secs(2),
+            TcpListener::bind((Ipv4Addr::LOCALHOST, port)),
+        )
+        .await;
+        assert!(matches!(rebind, Ok(Ok(_))), "the port must be free once the flow ends");
+    }
+
     #[tokio::test]
     async fn binds_an_ephemeral_loopback_port() {
         let loopback = Loopback::bind().await.expect("bind");
@@ -203,15 +222,22 @@ mod tests {
 
         assert_eq!(server.await.expect("join").expect("code"), "4/0abc");
 
-        // Nothing is listening on the port any more, so the OS hands it straight back.
-        // (A connect() probe is unreliable here: Windows loopback drops the SYN instead
-        // of refusing it.)
-        let rebind = tokio::time::timeout(
-            Duration::from_secs(2),
-            TcpListener::bind((Ipv4Addr::LOCALHOST, port)),
-        )
-        .await;
-        assert!(matches!(rebind, Ok(Ok(_))), "the port must be free once the flow ends");
+        assert_port_is_free(port).await;
+    }
+
+    /// The give-up path (issue #22): a browser that never comes back must end the flow
+    /// and release the port, or the app hangs forever with the socket held.
+    #[tokio::test]
+    async fn a_browser_that_never_returns_abandons_the_flow_and_frees_the_port() {
+        let loopback = Loopback::bind_with_timeout(Duration::from_millis(100)).await.expect("bind");
+        let port = loopback.port();
+        let state = State::generate().expect("state");
+
+        let err = loopback.wait_for_code(&state).await.expect_err("must give up");
+        assert_eq!(err.code(), "cancelled");
+        assert!(err.to_string().contains("never returned"), "{err}");
+
+        assert_port_is_free(port).await;
     }
 
     #[tokio::test]
@@ -228,6 +254,8 @@ mod tests {
 
         let err = server.await.expect("join").expect_err("must reject");
         assert_eq!(err.code(), "protocol");
+
+        assert_port_is_free(port).await;
     }
 
     #[tokio::test]
@@ -240,11 +268,17 @@ mod tests {
             async move { loopback.wait_for_code(&state).await }
         });
 
-        let _ = raw_get(port, "/?error=access_denied&error_description=User+denied").await;
+        // The sentinel is planted where a server response can put a token; only
+        // `error=` may reach the message (issue #25).
+        let _ =
+            raw_get(port, "/?error=access_denied&error_description=User+denied+ya29.PLANTED").await;
 
         let err = server.await.expect("join").expect_err("must stop");
         assert_eq!(err.code(), "cancelled");
         assert!(err.to_string().contains("access_denied"));
+        for rendered in [err.to_string(), format!("{err:?}")] {
+            assert!(!rendered.contains("PLANTED"), "the callback must not be echoed: {rendered}");
+        }
     }
 
     #[test]

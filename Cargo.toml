@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/drive-core", "crates/drive-oauth", "crates/drive-storage"]
+members = ["crates/drive-core", "crates/drive-oauth", "crates/drive-storage", "src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +14,11 @@ repository = "https://github.com/joao-pedro-gms/9drive-desktop"
 [workspace.dependencies]
 async-trait = "0.1"
 base64 = "0.23"
+# The orchestration layer in drive-core drives a provider but never names a concrete backend, so
+# it depends on the trait's crate rather than re-declaring anything.
+drive-core = { path = "crates/drive-core" }
+drive-oauth = { path = "crates/drive-oauth" }
+drive-storage = { path = "crates/drive-storage" }
 getrandom = "0.4"
 keyring = "4"
 reqwest = { version = "0.13", default-features = false, features = ["form", "json", "rustls"] }
@@ -21,5 +26,14 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-log = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
 thiserror = "2"
-tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"

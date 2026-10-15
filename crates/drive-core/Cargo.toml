@@ -11,7 +11,13 @@ repository.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+async-trait.workspace = true
+drive-storage.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+# A regular dependency, not a dev one: the sync engine and the upload queue are async, and their
+# tests run on the same runtime. `sync` is here for `tokio::sync::Notify`, which the upload queue
+# uses to wake a paused run; it used to resolve only through reqwest's transitive features.
+tokio.workspace = true

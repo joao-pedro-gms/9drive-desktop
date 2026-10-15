@@ -316,6 +316,56 @@ mod tests {
         stub.request().await;
     }
 
+    /// Only `error` and `error_description` may reach the message (issue #25): Google
+    /// puts the request and sometimes the grant in the rest of the body.
+    #[tokio::test]
+    async fn a_token_error_message_never_carries_the_response_body() {
+        let stub = Stub::start(
+            400,
+            r#"{"error":"access_denied","error_description":"nope","token":"ya29.PLANTED","debug_token":"1//PLANTED"}"#,
+        )
+        .await;
+        let err = exchange_code(
+            &reqwest::Client::new(),
+            &Endpoints { token: stub.url.clone(), ..Endpoints::default() },
+            "id",
+            "http://127.0.0.1:1",
+            "code",
+            &CodeVerifier::from_raw("v"),
+        )
+        .await
+        .expect_err("must fail");
+
+        assert_eq!(err.code(), "protocol");
+        assert!(err.to_string().contains("nope"), "the reason must survive: {err}");
+        for rendered in [err.to_string(), format!("{err:?}")] {
+            assert!(!rendered.contains("PLANTED"), "the body must not be echoed: {rendered}");
+        }
+        stub.request().await;
+    }
+
+    /// A body that will not parse must not be quoted back either (issue #25).
+    #[tokio::test]
+    async fn a_token_body_that_fails_to_parse_is_not_quoted_into_the_error() {
+        let stub = Stub::start(200, r#"{"access_token":"ya29.PLANTED","refresh_token":}"#).await;
+        let err = exchange_code(
+            &reqwest::Client::new(),
+            &Endpoints { token: stub.url.clone(), ..Endpoints::default() },
+            "id",
+            "http://127.0.0.1:1",
+            "code",
+            &CodeVerifier::from_raw("v"),
+        )
+        .await
+        .expect_err("must fail");
+
+        assert_eq!(err.code(), "protocol");
+        for rendered in [err.to_string(), format!("{err:?}")] {
+            assert!(!rendered.contains("PLANTED"), "the body must not be echoed: {rendered}");
+        }
+        stub.request().await;
+    }
+
     #[test]
     fn debug_never_prints_a_token() {
         let tokens = TokenSet {
