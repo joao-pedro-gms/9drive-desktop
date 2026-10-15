@@ -88,7 +88,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ inputs.tag || github.ref_name }}
-          releaseName: 9Drive Desktop ${{ github.ref_name }}
+          releaseName: 9Drive Desktop ${{ inputs.tag || github.ref_name }}
           releaseBody: |
             Installers for 9Drive Desktop.
 
