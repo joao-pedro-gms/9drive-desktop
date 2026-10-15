@@ -23,6 +23,10 @@ drive-storage.workspace = true
 # `state::AppState::new` takes the bare `rusqlite::Connection` the domain crate hands out, so the
 # type has to be nameable here even though no SQL is written in this crate.
 rusqlite.workspace = true
+# Every command argument and every command return type crosses IPC as serde: `FileQuery`,
+# `FilePatch`, `ByteRange`, `AppInfo`, `AuthRequest`, `UploadTask`, `SyncOutcome`. Already a
+# workspace dependency (drive-core uses it); Tauri exposes no re-export of its own.
+serde.workspace = true
 tauri.workspace = true
 tauri-plugin-autostart.workspace = true
 tauri-plugin-dialog.workspace = true

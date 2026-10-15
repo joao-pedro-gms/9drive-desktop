@@ -2559,6 +2559,7 @@ dependencies = [
  "drive-storage",
  "reqwest",
  "rusqlite",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",

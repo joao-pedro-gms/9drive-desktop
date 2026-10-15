@@ -19,6 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # `src-tauri` is a workspace member, so clippy and the test suite link Tauri and need the
+      # same Linux system libraries the webview does. Without these the build dies in
+      # `glib-sys` long before any of our code is reached.
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --assume-yes \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf
+
       # Keep in step with rust-toolchain.toml (and the msrv in clippy.toml).
       - name: Install Rust toolchain
         # @master is required when the toolchain comes from `with:`; the @rev is the default otherwise.
