@@ -43,23 +43,29 @@
       return;
     }
     let revoked: string | null = null;
+    // Switching files mid-export would otherwise resolve the old request after the new one and
+    // show the previous document, leaking its blob (up to Drive's 10 MB export cap) as well.
+    let cancelled = false;
     void (async () => {
       error = null;
       try {
         const row = await getFile(id);
+        if (cancelled) return;
         file = row;
         if (row.mime_type?.startsWith('application/vnd.google-apps.')) {
           const bytes = await previewData(id);
+          if (cancelled) return;
           const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
-          blobUrl = url;
           revoked = url;
+          blobUrl = url;
         }
       } catch (err) {
-        error = err instanceof Error ? err : new Error(String(err));
+        if (!cancelled) error = err instanceof Error ? err : new Error(String(err));
       }
     })();
     return () => {
+      cancelled = true;
       // A new file replaces the old URL; leaking one per open would pin the whole export.
       if (revoked) URL.revokeObjectURL(revoked);
       if (revoked === blobUrl) blobUrl = null;
@@ -69,8 +75,12 @@
   async function download(): Promise<void> {
     if (!file) return;
     saving = true;
+    error = null;
     try {
       await saveFileAs(file.id);
+    } catch (err) {
+      // A Drive error or an unwritable path has to reach the user, not the console.
+      error = err instanceof Error ? err : new Error(String(err));
     } finally {
       saving = false;
     }

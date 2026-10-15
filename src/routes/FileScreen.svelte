@@ -18,7 +18,7 @@
   } from '../lib/icons';
   import { files, folders } from '../lib/state.svelte';
   import { nav } from '../lib/nav.svelte';
-  import { saveFileAs, type FileItem, type Folder } from '../lib/ipc';
+  import { saveFileAs, IpcError, type FileItem, type Folder } from '../lib/ipc';
   import type { IconComponent } from '../lib/icons';
   import FileGrid from '../lib/components/drive/FileGrid.svelte';
   import FileTable, {
@@ -235,8 +235,17 @@
     onchanged();
   }
 
+  /**
+   * One save dialog per file, in order: the command writes wherever the user picked, so a batch
+   * cannot share one dialog. A failure stops the batch and surfaces on the screen's error banner
+   * rather than vanishing into an unhandled rejection.
+   */
   async function download(ids: number[]): Promise<void> {
-    for (const id of ids) await saveFileAs(id);
+    try {
+      for (const id of ids) await saveFileAs(id);
+    } catch (err) {
+      files.error = err instanceof IpcError ? err : new IpcError('unknown', String(err));
+    }
   }
 
   /** A row action covers the whole selection when the row is part of it, and just the row if not. */

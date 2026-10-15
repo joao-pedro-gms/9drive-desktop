@@ -51,7 +51,9 @@
     if (view === 'trash') return 'Trash';
     if (view === 'quota') return 'Storage';
     if (view === 'settings') return 'Settings';
-    return nav.current.folderId === null ? 'My files' : (nav.folderName ?? 'Folder');
+    // The folder name is memory-only — the URL carries the id, not the name — so a reload or a Back
+// navigation into a folder leaves it unknown. Say the id rather than invent a name.
+return nav.current.folderId === null ? 'My files' : (nav.folderName ?? `Folder #${nav.current.folderId}`);
   });
 
   const subtitle = $derived(
@@ -59,17 +61,33 @@
   );
 
   $effect(() => {
-    const stop = nav.listen();
+    // `subscribe` registers Tauri listeners and hands back the stop for each one; the cleanup
+    // has to call those, not `subscribe` again, or every re-run doubles the handlers.
+    let stopAccounts: (() => void) | undefined;
+    let stopUpload: (() => void) | undefined;
+    let cancelled = false;
+
+    const stopNav = nav.listen();
     void (async () => {
-      await Promise.all([settings.refresh(), theme.load()]);
+      await Promise.all([settings.refresh(), settings.load(), theme.load()]);
       await accounts.load();
-      await accounts.subscribe();
-      await upload.subscribe();
+      const [accountsStop, uploadStop] = await Promise.all([accounts.subscribe(), upload.subscribe()]);
+      // The effect can be torn down while the listeners are still being registered.
+      if (cancelled) {
+        accountsStop();
+        uploadStop();
+        return;
+      }
+      stopAccounts = accountsStop;
+      stopUpload = uploadStop;
       booted = true;
     })();
+
     return () => {
-      stop();
-      void accounts.subscribe();
+      cancelled = true;
+      stopNav();
+      stopAccounts?.();
+      stopUpload?.();
     };
   });
 

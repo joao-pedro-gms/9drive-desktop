@@ -171,13 +171,33 @@ pub fn move_files(
     }))
 }
 
-/// Removes the mirror rows. Drive keeps the files: this is the app forgetting them, and the
-/// next sync would bring them back.
+/// Removes the files for good, in Drive and then in the mirror. Drive goes first for the same
+/// reason `set_trashed` does: a row that claimed a permanent delete Drive refused would be back
+/// on the next sync, and the user would watch the file reappear after agreeing to lose it.
+/// A file whose Drive call fails keeps its local row and reports why.
 #[tauri::command(rename_all = "snake_case")]
-pub fn delete_files(state: State<'_, AppState>, file_ids: Vec<i64>) -> IpcResult<()> {
+pub async fn delete_files(state: State<'_, AppState>, file_ids: Vec<i64>) -> IpcResult<()> {
+    let rows: Vec<FileItem> = ok(db::with_conn(&state.conn(), |conn| {
+        file_ids.iter().map(|id| files::get(conn, *id)).collect()
+    }))?;
+
+    // One provider per account for the whole call, not one per file.
+    let mut providers: HashMap<i64, Arc<dyn StorageProvider>> = HashMap::new();
+    for file in &rows {
+        let provider = match providers.entry(file.account_id) {
+            Entry::Occupied(seen) => Arc::clone(seen.get()),
+            Entry::Vacant(slot) => {
+                let provider = ok(state.provider(file.account_id).await)?;
+                slot.insert(Arc::clone(&provider));
+                provider
+            }
+        };
+        provider.delete(&file.drive_file_id).await.map_err(storage)?;
+    }
+
     ok(db::with_conn(&state.conn(), |conn| {
-        for id in &file_ids {
-            files::delete(conn, *id)?;
+        for file in &rows {
+            files::delete(conn, file.id)?;
         }
         Ok(())
     }))
